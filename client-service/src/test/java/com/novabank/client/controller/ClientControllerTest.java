@@ -1,35 +1,30 @@
 package com.novabank.client.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.novabank.client.dto.ClientDTO;
-import com.novabank.client.service.ClientService;
+import static org.mockito.Mockito.when;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.reactive.server.WebTestClient;
 
-import java.util.List;
+import com.novabank.client.dto.ClientDTO;
+import com.novabank.client.service.ClientService;
 
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import reactor.core.publisher.Flux;
 
-@WebMvcTest(ClientController.class)
+@WebFluxTest(controllers = ClientController.class)
 class ClientControllerTest {
 
     @Autowired
-    private MockMvc mockMvc;
+    private WebTestClient webTestClient;
 
     @MockBean
     private ClientService clientService;
 
-    @Autowired
-    private ObjectMapper objectMapper;
-
     @Test
-    void listClients_shouldReturnJsonArray() throws Exception {
+    void listClients_shouldReturnJsonArray() {
         ClientDTO dto = ClientDTO.builder()
                 .id(1L)
                 .firstName("Juan")
@@ -40,12 +35,16 @@ class ClientControllerTest {
                 .accountCount(0)
                 .build();
 
-        when(clientService.listClients()).thenReturn(List.of(dto));
+        when(clientService.listClients()).thenReturn(Flux.just(dto));
 
-        mockMvc.perform(get("/clients/getAll")
-                        .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(1))
-                .andExpect(jsonPath("$[0].firstName").value("Juan"));
+        webTestClient.get()
+                .uri("/clients/getAll")
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
+                .expectBody()
+                .jsonPath("$[0].id").isEqualTo(1)
+                .jsonPath("$[0].firstName").isEqualTo("Juan");
     }
 }

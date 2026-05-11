@@ -1,15 +1,16 @@
 package com.novabank.account.repository;
 
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.repository.reactive.ReactiveCrudRepository;
 import org.springframework.stereotype.Repository;
 
 import com.novabank.account.model.Account;
 
-import java.util.List;
-import java.util.Optional;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 @Repository
-public interface AccountRepository extends JpaRepository<Account, Long> {
-    Optional<Account> findByIban(String iban);
-    List<Account> findByClientId(Long clientId);
+public interface AccountRepository extends ReactiveCrudRepository<Account, Long> {
+    Mono<Account> findByIban(String iban);
+
+    Flux<Account> findByClientId(Long clientId);
 }
