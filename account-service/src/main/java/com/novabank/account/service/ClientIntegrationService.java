@@ -25,7 +25,8 @@ public class ClientIntegrationService {
     public Mono<ClientDTO> getClient(Long id) {
         // Ajusta la ruta según el ClientController real de client-service.
         return webClient.get()
-                .uri("http://CLIENT-SERVICE/clients/{id}", id)
+                // En client-service el endpoint es /clients/getById/{id} (ver ClientController)
+                .uri("http://client-service/clients/getById/{id}", id)
                 .retrieve()
                 .bodyToMono(ClientDTO.class);
     }

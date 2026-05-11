@@ -20,8 +20,10 @@ public class ClienteServiceClient {
 
     public Mono<ClientDTO> obtenerCliente(Long id) {
         return webClient.get()
-                // Ajusta host + path al nombre real del servicio y endpoint del client-service:
-                .uri("http://CLIENT-SERVICE/clients/{id}", id)
+                // Debe coincidir con el serviceId registrado en Eureka (normalmente en minúsculas).
+                // Con @LoadBalanced, WebClient resolverá "http://client-service" vía Spring Cloud LoadBalancer + Eureka.
+                // En client-service el endpoint es /clients/getById/{id} (ver ClientController)
+                .uri("http://client-service/clients/getById/{id}", id)
                 .retrieve()
                 .onStatus(HttpStatusCode::is4xxClientError,
                         resp -> Mono.error(new ClientNotFoundException(

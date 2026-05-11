@@ -45,8 +45,10 @@ class AccountControllerTest {
                 .accept(MediaType.APPLICATION_JSON)
                 .exchange()
                 .expectStatus().isOk()
+                .expectHeader().contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
                 .expectBody()
                 .jsonPath("$[0].iban").isEqualTo("ES123")
+                // JSON numbers are decoded as Integer by default in jsonPath
                 .jsonPath("$[0].clientId").isEqualTo(1)
                 .jsonPath("$[0].balance").isEqualTo(0);
     }

@@ -4,6 +4,16 @@ spring:
   config:
     import: optional:configserver:http://localhost:8888
 
+  # Fallback local: si por cualquier motivo el Config Server no está entregando
+  # spring.r2dbc.*, el servicio al menos podrá arrancar.
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/novabank_accounts
+    username: banco_user
+    password: 1234
+  sql:
+    init:
+      mode: always
+
 eureka:
   client:
     service-url:
