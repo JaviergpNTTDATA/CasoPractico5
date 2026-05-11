@@ -31,15 +31,18 @@ public class AccountService {
     private final ClientIntegrationService clientIntegrationService;
     private final IbanGenerator ibanGenerator;
     private final MovementRepository movementRepository;
+    private final MovementEventService movementEventService;
 
     public AccountService(AccountRepository accountRepository,
             ClientIntegrationService clientIntegrationService,
             IbanGenerator ibanGenerator,
-            MovementRepository movementRepository) {
+            MovementRepository movementRepository,
+            MovementEventService movementEventService) {
         this.accountRepository = accountRepository;
         this.clientIntegrationService = clientIntegrationService;
         this.ibanGenerator = ibanGenerator;
         this.movementRepository = movementRepository;
+        this.movementEventService = movementEventService;
     }
 
     public Mono<AccountDTO> createAccount(Long clientId) {
@@ -108,7 +111,8 @@ public class AccountService {
 
                     return accountRepository.save(account)
                             .then(movementRepository.save(movement))
-                            .map(saved -> MovementMapper.toDto(saved, account));
+                            .map(saved -> MovementMapper.toDto(saved, account))
+                            .doOnNext(movementEventService::publish);
                 });
     }
 
@@ -135,7 +139,8 @@ public class AccountService {
 
                     return accountRepository.save(account)
                             .then(movementRepository.save(movement))
-                            .map(saved -> MovementMapper.toDto(saved, account));
+                            .map(saved -> MovementMapper.toDto(saved, account))
+                            .doOnNext(movementEventService::publish);
                 });
     }
 
@@ -202,7 +207,8 @@ public class AccountService {
                             .then(accountRepository.save(destination))
                             .then(movementRepository.save(outgoing))
                             .flatMap(savedOut -> movementRepository.save(incoming)
-                                    .thenReturn(MovementMapper.toDto(savedOut, origin)));
+                                    .thenReturn(MovementMapper.toDto(savedOut, origin)))
+                            .doOnNext(movementEventService::publish);
                 });
     }
 

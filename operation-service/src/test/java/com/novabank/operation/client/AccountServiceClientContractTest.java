@@ -13,11 +13,12 @@ import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.Disabled;
 
 @SpringBootTest(properties = {
-        "feign.client.config.ACCOUNT-SERVICE.url=http://localhost:${wiremock.server.port}"
+        // Forzamos el baseUrl del AccountServiceClient a WireMock
+        "account-service.base-url=http://localhost:${wiremock.server.port}"
 })
 @AutoConfigureWireMock(port = 0)
 @ActiveProfiles("test")
-@Disabled
+@org.junit.jupiter.api.Disabled("Contrato legacy: depende de la configuración LoadBalanced/Eureka; se testea con tests unitarios de cliente o integración completa")
 class AccountServiceClientContractTest {
 
     @Autowired
@@ -36,10 +37,12 @@ class AccountServiceClientContractTest {
                             }
                             """)));
 
-        AccountDTO account = accountServiceClient.getAccountByIban("ES123");
-
-        assertNotNull(account);
-        assertEquals("ES123", account.iban());
-        assertEquals(1L, account.id());
+        reactor.test.StepVerifier.create(accountServiceClient.getAccountByIban("ES123"))
+                .assertNext(account -> {
+                    assertNotNull(account);
+                    assertEquals("ES123", account.iban());
+                    assertEquals(1L, account.id());
+                })
+                .verifyComplete();
     }
 }
