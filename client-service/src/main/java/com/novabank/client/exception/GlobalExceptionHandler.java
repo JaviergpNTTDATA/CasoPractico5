@@ -1,5 +1,9 @@
 package com.novabank.client.exception;
 
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -7,32 +11,28 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
+import reactor.core.publisher.Mono;
 
 @RestControllerAdvice
-public class GlobalExceptionHandler extends RuntimeException{
+public class GlobalExceptionHandler {
 
-    //Client not found 404
+    // Client not found 404
     @ExceptionHandler(ClientNotFoundException.class)
-    public ResponseEntity<Map<String, Object>> handleClienteNotFound(ClientNotFoundException ex) {
-        return buildResponse("CLIENT_NOT_FOUND", ex.getMessage(), HttpStatus.NOT_FOUND);
+    public Mono<ResponseEntity<Map<String, Object>>> handleClientNotFound(ClientNotFoundException ex) {
+        return Mono.just(buildResponse("CLIENT_NOT_FOUND", ex.getMessage(), HttpStatus.NOT_FOUND));
     }
 
-
-    //Invdalid or duplicated error 400
+    // Invalid or duplicated error 400
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
-        return buildResponse("BAD_REQUEST", ex.getMessage(), HttpStatus.BAD_REQUEST);
+    public Mono<ResponseEntity<Map<String, Object>>> handleIllegalArgument(IllegalArgumentException ex) {
+        return Mono.just(buildResponse("BAD_REQUEST", ex.getMessage(), HttpStatus.BAD_REQUEST));
     }
 
-    //Validation error 400
+    // Validation error 400
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, Object>> handleValidationErrors(MethodArgumentNotValidException ex) {
+    public Mono<ResponseEntity<Map<String, Object>>> handleValidationErrors(MethodArgumentNotValidException ex) {
 
         Map<String, String> errores = new HashMap<>();
-
         for (FieldError error : ex.getBindingResult().getFieldErrors()) {
             errores.put(error.getField(), error.getDefaultMessage());
         }
@@ -42,10 +42,9 @@ public class GlobalExceptionHandler extends RuntimeException{
         body.put("messages", errores);
         body.put("timestamp", LocalDateTime.now());
 
-        return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
+        return Mono.just(ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body));
     }
 
-    //Method to build responses
     private ResponseEntity<Map<String, Object>> buildResponse(String errorCode, String message, HttpStatus status) {
 
         Map<String, Object> body = new HashMap<>();
@@ -53,6 +52,6 @@ public class GlobalExceptionHandler extends RuntimeException{
         body.put("message", message);
         body.put("timestamp", LocalDateTime.now());
 
-        return new ResponseEntity<>(body, status);
+        return ResponseEntity.status(status).body(body);
     }
 }

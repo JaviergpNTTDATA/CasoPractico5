@@ -1,15 +1,20 @@
 package com.novabank.account.model;
 
-import jakarta.persistence.*;
-import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.Table;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 @Builder
-@Entity
-@Table(name = "movements")
+@Table("movements")
 @Getter
 @Setter
 @AllArgsConstructor
@@ -17,27 +22,21 @@ import java.time.LocalDateTime;
 public class Movement {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "account_id", nullable = false)
-    private Account account;
+    @Column("account_id")
+    private Long accountId;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column("type")
     private MovementType type;
 
-    @Column(nullable = false)
+    @Column("amount")
     private BigDecimal amount;
 
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false)
+    @Column("created_at")
     private LocalDateTime createdAt;
 
-
-    @PrePersist
-    public void prePersist() {
+    public void ensureDefaults() {
         if (createdAt == null) {
             createdAt = LocalDateTime.now();
         }

@@ -4,11 +4,19 @@ import org.springframework.stereotype.Component;
 
 import com.novabank.account.dto.ClientDTO;
 
-@Component
-public class ClientServiceFallback implements ClientServiceClient {
+import reactor.core.publisher.Mono;
 
-    @Override
-    public ClientDTO getClientById(Long id) {
+/**
+ * Fallback legacy de Feign. En esta migración ya no se usa porque la integración
+ * con client-service se hace con WebClient + Resilience4j (ver ClientIntegrationService).
+ *
+ * Se mantiene como componente auxiliar por si se usa desde algún test o wiring antiguo,
+ * pero devolviendo Mono para evitar APIs bloqueantes.
+ */
+@Component
+public class ClientServiceFallback {
+
+    public Mono<ClientDTO> getClientById(Long id) {
         ClientDTO dto = new ClientDTO();
         dto.setId(id);
         dto.setFirstName("Client Unavailable");
@@ -17,6 +25,6 @@ public class ClientServiceFallback implements ClientServiceClient {
         dto.setEmail("");
         dto.setPhone("");
         dto.setAccountCount(0);
-        return dto;
+        return Mono.just(dto);
     }
 }

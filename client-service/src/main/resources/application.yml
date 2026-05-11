@@ -3,6 +3,15 @@ spring:
     name: client-service
   config:
     import: optional:configserver:http://localhost:8888
+  # Fallback local por si el Config Server no aporta spring.r2dbc.* (o no se aplica por algún motivo).
+  # Esto evita el error "Failed to determine a suitable R2DBC Connection URL".
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/novabank_clients
+    username: banco_user
+    password: 1234
+  sql:
+    init:
+      mode: always
 
 eureka:
   client:

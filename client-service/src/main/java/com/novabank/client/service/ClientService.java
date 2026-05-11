@@ -1,8 +1,6 @@
 package com.novabank.client.service;
 
-
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.novabank.client.dto.ClientDTO;
 import com.novabank.client.dto.CreateClient;
@@ -11,11 +9,10 @@ import com.novabank.client.mapper.ClientMapper;
 import com.novabank.client.model.Client;
 import com.novabank.client.repository.ClientRepository;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 @Service
-@Transactional
 public class ClientService {
 
     private final ClientRepository clientRepository;
@@ -24,48 +21,53 @@ public class ClientService {
         this.clientRepository = clientRepository;
     }
 
-    @Transactional(readOnly = true)
-    public List<ClientDTO> listClients() {
-        return clientRepository.findAll().stream()
+    public Flux<ClientDTO> listClients() {
+        return clientRepository.findAll()
+                .map(ClientMapper::toDTO);
+    }
+
+    public Mono<ClientDTO> getClient(Long id) {
+        return clientRepository.findById(id)
                 .map(ClientMapper::toDTO)
-                .collect(Collectors.toList());
+                .switchIfEmpty(Mono.error(new ClientNotFoundException("Client not found: " + id)));
     }
 
-    @Transactional(readOnly = true)
-    public ClientDTO getsClient(Long id) {
-        Client client = clientRepository.findById(id)
-                .orElseThrow(() -> new ClientNotFoundException("Client not found: " + id));
-        return ClientMapper.toDTO(client);
+    public Mono<ClientDTO> getClientByDni(String dni) {
+        return clientRepository.findByDni(dni)
+                .map(ClientMapper::toDTO)
+                .switchIfEmpty(Mono.error(new ClientNotFoundException("Client not found: " + dni)));
     }
 
-    @Transactional(readOnly = true)
-    public ClientDTO getClientDNI(String dni) {
-        Client client = clientRepository.findByDni(dni)
-                .orElseThrow(() -> new ClientNotFoundException("Client not found: " + dni));
-        return ClientMapper.toDTO(client);
-    }
-
-    public ClientDTO createClient(CreateClient dto) {
-        if (clientRepository.existsByDni(dto.getDni()))
-            throw new IllegalArgumentException("A client with that DNI already exists: " +
-                    dto.getDni());
-        if (clientRepository.existsByEmail(dto.getEmail()))
-            throw new IllegalArgumentException("A client with that email already exists: " +
-                    dto.getEmail());
-        if (clientRepository.existsByPhone(dto.getPhone()))
-            throw new IllegalArgumentException("A client with that telephone number already exists: " + dto.getPhone());
-        if (dto.getFirstName().isBlank())
+    public Mono<ClientDTO> createClient(CreateClient dto) {
+        // Validaciones síncronas sobre el request (no bloqueantes)
+        if (dto.getFirstName() == null || dto.getFirstName().isBlank())
             throw new IllegalArgumentException("First name is needed");
-        if (dto.getLastName().isBlank())
+        if (dto.getLastName() == null || dto.getLastName().isBlank())
             throw new IllegalArgumentException("Last name is needed");
-        if (dto.getDni().isBlank())
+        if (dto.getDni() == null || dto.getDni().isBlank())
             throw new IllegalArgumentException("DNI is needed");
-        if (dto.getEmail().isBlank())
+        if (dto.getEmail() == null || dto.getEmail().isBlank())
             throw new IllegalArgumentException("Email is needed");
-        if (dto.getPhone().isBlank())
+        if (dto.getPhone() == null || dto.getPhone().isBlank())
             throw new IllegalArgumentException("Phone is needed");
 
-        Client save = clientRepository.save(ClientMapper.toEntity(dto));
-        return ClientMapper.toDTO(save);
+        // Patrón correcto: fijar el tipo de Mono.error para alinear ramas del switchIfEmpty
+        return clientRepository.existsByDni(dto.getDni())
+                .flatMap(exists -> exists
+                        ? Mono.<ClientDTO>error(
+                                new IllegalArgumentException("A client with that DNI already exists: " + dto.getDni()))
+                        : Mono.empty())
+                .switchIfEmpty(clientRepository.existsByEmail(dto.getEmail())
+                        .flatMap(exists -> exists
+                                ? Mono.<ClientDTO>error(new IllegalArgumentException(
+                                        "A client with that email already exists: " + dto.getEmail()))
+                                : Mono.empty()))
+                .switchIfEmpty(clientRepository.existsByPhone(dto.getPhone())
+                        .flatMap(exists -> exists
+                                ? Mono.<ClientDTO>error(new IllegalArgumentException(
+                                        "A client with that telephone number already exists: " + dto.getPhone()))
+                                : Mono.empty()))
+                .switchIfEmpty(Mono.defer(() -> clientRepository.save(ClientMapper.toEntity(dto))
+                        .map(ClientMapper::toDTO)));
     }
 }
