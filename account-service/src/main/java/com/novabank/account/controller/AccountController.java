@@ -68,14 +68,17 @@ public class AccountController {
         return service.withdraw(iban.toUpperCase(), amount);
     }
 
-    @PostMapping("/{iban}/transfer-withdraw")
-    public Mono<MovementDTO> transferWithdraw(@PathVariable String iban, @RequestParam BigDecimal amount) {
-        return service.transferWithdraw(iban.toUpperCase(), amount);
-    }
-
-    @PostMapping("/{iban}/transfer-deposit")
-    public Mono<MovementDTO> transferDeposit(@PathVariable String iban, @RequestParam BigDecimal amount) {
-        return service.transferDeposit(iban.toUpperCase(), amount);
+    @Operation(summary = "Transfer money between accounts", description = "Transfers an amount from origin IBAN to destination IBAN")
+    @ApiResponse(responseCode = "200", description = "Transfer completed successfully")
+    @ApiResponse(responseCode = "400", description = "Invalid request")
+    @ApiResponse(responseCode = "404", description = "Origin or destination account not found")
+    @ApiResponse(responseCode = "422", description = "Insufficient balance")
+    @PostMapping("/transfer")
+    public Mono<MovementDTO> transfer(
+            @RequestParam String originIban,
+            @RequestParam String destinationIban,
+            @RequestParam BigDecimal amount) {
+        return service.transfer(originIban.toUpperCase(), destinationIban.toUpperCase(), amount);
     }
 
     @Operation(summary = "Get movements of an account", description = "Returns all movements of an account ordered by date (desc)")

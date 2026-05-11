@@ -45,7 +45,10 @@ public class AccountService {
     public Mono<AccountDTO> createAccount(Long clientId) {
         return clientIntegrationService.getClient(clientId)
                 .flatMap(client -> {
-                    if ("No disponible".equals(client.getFirstName())) {
+                    // El fallback de ClientIntegrationService devuelve "Client Unavailable"
+                    // (no "No disponible"). Si llega ese valor, consideramos el cliente no disponible.
+                    if ("Client Unavailable".equalsIgnoreCase(client.getFirstName())
+                            || "No disponible".equalsIgnoreCase(client.getFirstName())) {
                         return Mono.error(new ClientNotFoundException(
                                 "Client service not available or client not found: " + clientId));
                     }
@@ -65,10 +68,14 @@ public class AccountService {
 
     public Flux<AccountDTO> listClientAccounts(Long clientId) {
         Mono<ClientDTO> clientMono = clientIntegrationService.getClient(clientId)
-                .flatMap(client -> "No disponible".equals(client.getFirstName())
-                        ? Mono.error(new ClientNotFoundException(
-                                "Client service not available or client not found: " + clientId))
-                        : Mono.just(client));
+                .flatMap(client -> {
+                    if ("Client Unavailable".equalsIgnoreCase(client.getFirstName())
+                            || "No disponible".equalsIgnoreCase(client.getFirstName())) {
+                        return Mono.error(new ClientNotFoundException(
+                                "Client service not available or client not found: " + clientId));
+                    }
+                    return Mono.just(client);
+                });
 
         return clientMono.thenMany(accountRepository.findByClientId(clientId)
                 .switchIfEmpty(Mono.error(new AccountNotFoundException(
@@ -132,53 +139,70 @@ public class AccountService {
                 });
     }
 
-    public Mono<MovementDTO> transferWithdraw(String iban, BigDecimal amount) {
+    /**
+     * Transferencia completa (origen -> destino) en una única operación.
+     *
+     * Validaciones:
+     * - amount > 0
+     * - originIban != destinationIban
+     * - ambas cuentas existen
+     * - saldo suficiente en origen
+     */
+    public Mono<MovementDTO> transfer(String originIban, String destinationIban, BigDecimal amount) {
         validateAmount(amount);
 
-        return accountRepository.findByIban(iban)
-                .switchIfEmpty(Mono.error(new AccountNotFoundException("Account not found with IBAN: " + iban)))
-                .flatMap(account -> {
-                    account.ensureDefaults();
-                    if (account.getBalance().compareTo(amount) < 0) {
+        if (originIban == null || destinationIban == null) {
+            return Mono.error(new IllegalArgumentException("Origin IBAN and destination IBAN are required"));
+        }
+        if (originIban.equalsIgnoreCase(destinationIban)) {
+            return Mono.error(new IllegalArgumentException("Origin and destination IBAN must be different"));
+        }
+
+        Mono<Account> originMono = accountRepository.findByIban(originIban)
+                .switchIfEmpty(Mono.error(new AccountNotFoundException("Origin account not found with IBAN: " + originIban)));
+
+        Mono<Account> destinationMono = accountRepository.findByIban(destinationIban)
+                .switchIfEmpty(Mono.error(new AccountNotFoundException("Destination account not found with IBAN: " + destinationIban)));
+
+        return Mono.zip(originMono, destinationMono)
+                .flatMap(tuple -> {
+                    Account origin = tuple.getT1();
+                    Account destination = tuple.getT2();
+
+                    origin.ensureDefaults();
+                    destination.ensureDefaults();
+
+                    if (origin.getBalance().compareTo(amount) < 0) {
                         return Mono.error(new InsufficientBalanceException("Insufficient balance"));
                     }
 
-                    account.setBalance(account.getBalance().subtract(amount));
+                    origin.setBalance(origin.getBalance().subtract(amount));
+                    destination.setBalance(destination.getBalance().add(amount));
 
-                    Movement movement = Movement.builder()
-                            .accountId(account.getId())
+                    // Movimiento que devolvemos (salida en origen). También persistimos el de entrada en destino.
+                    Movement outgoing = Movement.builder()
+                            .accountId(origin.getId())
                             .type(MovementType.OUTGOING_TRANSFER)
                             .amount(amount)
                             .createdAt(LocalDateTime.now())
                             .build();
-                    movement.ensureDefaults();
+                    outgoing.ensureDefaults();
 
-                    return accountRepository.save(account)
-                            .then(movementRepository.save(movement))
-                            .map(saved -> MovementMapper.toDto(saved, account));
-                });
-    }
-
-    public Mono<MovementDTO> transferDeposit(String iban, BigDecimal amount) {
-        validateAmount(amount);
-
-        return accountRepository.findByIban(iban)
-                .switchIfEmpty(Mono.error(new AccountNotFoundException("Account not found with IBAN: " + iban)))
-                .flatMap(account -> {
-                    account.ensureDefaults();
-                    account.setBalance(account.getBalance().add(amount));
-
-                    Movement movement = Movement.builder()
-                            .accountId(account.getId())
+                    Movement incoming = Movement.builder()
+                            .accountId(destination.getId())
                             .type(MovementType.INCOMING_TRANSFER)
                             .amount(amount)
                             .createdAt(LocalDateTime.now())
                             .build();
-                    movement.ensureDefaults();
+                    incoming.ensureDefaults();
 
-                    return accountRepository.save(account)
-                            .then(movementRepository.save(movement))
-                            .map(saved -> MovementMapper.toDto(saved, account));
+                    // Nota: sin transacciones R2DBC, esto no es atómico al 100%.
+                    // Si quieres atomicidad real, hay que usar R2dbcTransactionManager + TransactionalOperator.
+                    return accountRepository.save(origin)
+                            .then(accountRepository.save(destination))
+                            .then(movementRepository.save(outgoing))
+                            .flatMap(savedOut -> movementRepository.save(incoming)
+                                    .thenReturn(MovementMapper.toDto(savedOut, origin)));
                 });
     }
 
