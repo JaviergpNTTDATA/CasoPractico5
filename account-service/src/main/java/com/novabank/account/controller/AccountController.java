@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -16,6 +17,7 @@ import com.novabank.account.dto.AccountDTO;
 import com.novabank.account.dto.MovementDTO;
 import com.novabank.account.service.AccountService;
 import com.novabank.account.service.InquiryService;
+import com.novabank.account.service.MovementEventService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -33,6 +35,7 @@ public class AccountController {
 
     private final AccountService service;
     private final InquiryService inquiryService;
+    private final MovementEventService movementEventService;
 
     @Operation(summary = "Create account", description = "Creates a new account for a given client")
     @ApiResponse(responseCode = "200", description = "Account created successfully")
@@ -106,6 +109,11 @@ public class AccountController {
     @GetMapping("/iban/{iban}/balance")
     public Mono<AccountBalanceDTO> getBalanceByIban(@PathVariable String iban) {
         return service.getBalanceByIban(iban.toUpperCase());
+    }
+
+    @GetMapping(value = "/{iban}/movements/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<MovementDTO> streamMovements(@PathVariable String iban) {
+        return movementEventService.streamByIban(iban.toUpperCase());
     }
 
 }

@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 
+import reactor.core.publisher.Mono;
+
 @Tag(name = "Operations", description = "Deposit, withdraw and transfer operations")
 @RestController
 @RequestMapping("/operations")
@@ -28,13 +30,12 @@ public class OperationController {
     @ApiResponse(responseCode = "200", description = "Deposit completed successfully")
     @ApiResponse(responseCode = "404", description = "Account not found")
     @PostMapping("/deposit")
-    public DepositWithdrawDTO deposit(@RequestParam String iban,
-                                      @RequestParam BigDecimal amount) {
+    public Mono<DepositWithdrawDTO> deposit(@RequestParam String iban,
+            @RequestParam BigDecimal amount) {
 
         DepositWithdrawRequest request = new DepositWithdrawRequest(
                 iban.toUpperCase(),
-                amount
-        );
+                amount);
 
         return service.deposit(request);
     }
@@ -46,13 +47,12 @@ public class OperationController {
     @ApiResponse(responseCode = "200", description = "Withdrawal completed successfully")
     @ApiResponse(responseCode = "404", description = "Account not found")
     @PostMapping("/withdraw")
-    public DepositWithdrawDTO withdraw(@RequestParam String iban,
-                                       @RequestParam BigDecimal amount) {
+    public Mono<DepositWithdrawDTO> withdraw(@RequestParam String iban,
+            @RequestParam BigDecimal amount) {
 
         DepositWithdrawRequest request = new DepositWithdrawRequest(
                 iban.toUpperCase(),
-                amount
-        );
+                amount);
 
         return service.withdraw(request);
     }
@@ -64,15 +64,14 @@ public class OperationController {
     @ApiResponse(responseCode = "200", description = "Transfer completed successfully")
     @ApiResponse(responseCode = "404", description = "One or both accounts not found")
     @PostMapping("/transfer")
-    public TransferDTO transfer(@RequestParam String sourceIban,
-                                @RequestParam String targetIban,
-                                @RequestParam BigDecimal amount) {
+    public Mono<TransferDTO> transfer(@RequestParam String sourceIban,
+            @RequestParam String targetIban,
+            @RequestParam BigDecimal amount) {
 
         TransferRequest request = new TransferRequest(
                 sourceIban.toUpperCase(),
                 targetIban.toUpperCase(),
-                amount
-        );
+                amount);
 
         return service.transfer(request);
     }

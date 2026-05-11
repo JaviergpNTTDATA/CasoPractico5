@@ -8,6 +8,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import com.novabank.operation.service.OperationService;
+
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -36,6 +38,12 @@ public class GlobalExceptionHandler extends RuntimeException{
     @ExceptionHandler(InsufficientBalanceException.class)
     public ResponseEntity<Map<String, Object>> handleSaldoInsuficiente(InsufficientBalanceException ex) {
         return buildResponse("INSUFFICIENT_BALANCE", ex.getMessage(), HttpStatus.UNPROCESSABLE_ENTITY);
+    }
+
+    //Exchange-rate unavailable 503 (fallback seguro)
+    @ExceptionHandler(OperationService.ExchangeRateRequiredException.class)
+    public ResponseEntity<Map<String, Object>> handleExchangeRateUnavailable(OperationService.ExchangeRateRequiredException ex) {
+        return buildResponse("EXCHANGE_RATE_UNAVAILABLE", ex.getMessage(), HttpStatus.SERVICE_UNAVAILABLE);
     }
 
     //Invdalid or duplicated error 400
