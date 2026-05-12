@@ -66,8 +66,7 @@ public class OperationService {
                 ? "EUR"
                 : request.currency().toUpperCase();
 
-        // Consultamos el tipo de cambio ANTES de llamar a account-service.
-        // Fallback seguro: si exchange-rate falla, devolvemos 503 y NO tocamos saldos.
+       
         Mono<BigDecimal> amountInEurMono = ("EUR".equals(currency))
                 ? Mono.just(request.amount())
                 : exchangeRateClient.getRate(currency, "EUR")
