@@ -4,8 +4,8 @@ spring:
   config:
     import: optional:configserver:http://localhost:8888
 
-  # Fallback local: si por cualquier motivo el Config Server no está entregando
-  # spring.r2dbc.*, el servicio al menos podrá arrancar.
+  # Fallback if config server is down, to avoid "Failed to determine a suitable RDBC Connection URL" and similar errors.
+  # This avoids the "Failed to determine a suitable RDBC Connection URL" error when config
   r2dbc:
     url: r2dbc:postgresql://localhost:5432/novabank_accounts
     username: banco_user

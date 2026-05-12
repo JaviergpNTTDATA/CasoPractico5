@@ -23,9 +23,8 @@ public class ClientIntegrationService {
     @Retry(name = "clienteService", fallbackMethod = "getClientFallback")
     @CircuitBreaker(name = "clienteService", fallbackMethod = "getClientFallback")
     public Mono<ClientDTO> getClient(Long id) {
-        // Ajusta la ruta según el ClientController real de client-service.
         return webClient.get()
-                // En client-service el endpoint es /clients/getById/{id} (ver ClientController)
+                // In client-service, the endpoint is /clients/getById/{id} to avoid confusion with account-service's /accounts/{id}.
                 .uri("http://client-service/clients/getById/{id}", id)
                 .retrieve()
                 .bodyToMono(ClientDTO.class);

@@ -14,7 +14,6 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 @DataR2dbcTest
-@org.junit.jupiter.api.Disabled("Pendiente de configurar BD de test R2DBC (Testcontainers o properties). Este test requiere PostgreSQL/ConnectionFactory.")
 class AccountRepositoryTest {
 
     @Autowired
@@ -22,19 +21,24 @@ class AccountRepositoryTest {
 
     @Test
     void saveAndFindByClientId_shouldWork() {
+        // Unique IBAN per test run to avoid collisions with preloaded data / previous runs.
+        // Column iban is limited (varchar(34)), so we avoid going overboard with UUID length.
+        String iban = ("TEST" + java.util.UUID.randomUUID().toString().replace("-", "")).substring(0, 34);
+
         Account acc = new Account();
         acc.setClientId(1L);
-        acc.setIban("ES123");
+        acc.setIban(iban);
         acc.setBalance(BigDecimal.ZERO);
         acc.ensureDefaults();
 
         Mono<Account> firstFound = accountRepository.save(acc)
                 .thenMany(accountRepository.findByClientId(1L))
+                .filter(a -> iban.equals(a.getIban()))
                 .next();
 
         StepVerifier.create(firstFound)
                 .assertNext(found -> {
-                    assertEquals("ES123", found.getIban());
+                    assertEquals(iban, found.getIban());
                     assertEquals(1L, found.getClientId());
                 })
                 .verifyComplete();
@@ -42,19 +46,23 @@ class AccountRepositoryTest {
 
     @Test
     void saveAndFindByIban_shouldWork() {
+        // Unique IBAN per test run to avoid collisions with preloaded data / previous runs.
+        // Column iban is limited (varchar(34)), so we avoid going overboard with UUID length.
+        String iban = ("TEST" + java.util.UUID.randomUUID().toString().replace("-", "")).substring(0, 34);
+
         Account acc = new Account();
         acc.setClientId(2L);
-        acc.setIban("ES999");
+        acc.setIban(iban);
         acc.setBalance(BigDecimal.TEN);
         acc.ensureDefaults();
 
         Mono<Account> foundMono = accountRepository.save(acc)
-                .then(accountRepository.findByIban("ES999"));
+                .then(accountRepository.findByIban(iban));
 
         StepVerifier.create(foundMono)
                 .assertNext(found -> {
                     assertEquals(2L, found.getClientId());
-                    assertEquals("ES999", found.getIban());
+                    assertEquals(iban, found.getIban());
                 })
                 .verifyComplete();
     }
