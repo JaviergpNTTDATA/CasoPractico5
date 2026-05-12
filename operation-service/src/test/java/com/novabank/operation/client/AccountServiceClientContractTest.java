@@ -9,14 +9,18 @@ import org.springframework.test.context.ActiveProfiles;
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.junit.jupiter.api.Assertions.*;
 
+import org.junit.jupiter.api.Disabled;
+
 
 @SpringBootTest(properties = {
-        // Forzamos el baseUrl del AccountServiceClient a WireMock
+
+        // This forces the AccountServiceClient to use the WireMock server instead of the real account-service.
+        //
         "account-service.base-url=http://localhost:${wiremock.server.port}"
 })
 @AutoConfigureWireMock(port = 0)
+@Disabled("Just beacuse me need to give the access, no it will drop us an 503 error")
 @ActiveProfiles("test")
-@org.junit.jupiter.api.Disabled("Contrato legacy: depende de la configuración LoadBalanced/Eureka; se testea con tests unitarios de cliente o integración completa")
 class AccountServiceClientContractTest {
 
     @Autowired
