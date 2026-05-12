@@ -36,7 +36,8 @@ class OperationServiceTest {
         TransferRequest request = new TransferRequest(
                 "ESFROM",
                 "ESTO",
-                BigDecimal.TEN
+                BigDecimal.TEN,
+                "USD"
         );
 
         AccountDTO source = new AccountDTO(
@@ -52,20 +53,23 @@ class OperationServiceTest {
         );
 
         // La implementación actual consulta divisa antes de transferir.
-        when(exchangeRateClient.getRate("EUR", "EUR")).thenReturn(Mono.just(
-                new ExchangeRateClient.ExchangeRateResponse("EUR", "EUR", BigDecimal.ONE, java.time.Instant.now())
+        when(exchangeRateClient.getRate("USD", "EUR")).thenReturn(Mono.just(
+                new ExchangeRateClient.ExchangeRateResponse("USD", "EUR", new BigDecimal("0.90"), java.time.Instant.now())
         ));
 
         when(accountServiceClient.getAccountByIban("ESFROM")).thenReturn(Mono.just(source));
         when(accountServiceClient.getAccountByIban("ESTO")).thenReturn(Mono.just(target));
 
+        // 10 USD * 0.90 = 9 EUR (importe que se debe usar en account-service)
+        BigDecimal expectedEur = new BigDecimal("9.00");
+
         // account-service transfer devuelve un MovementDTO (ver AccountServiceClient.transfer)
-        when(accountServiceClient.transfer("ESFROM", "ESTO", BigDecimal.TEN))
+        when(accountServiceClient.transfer("ESFROM", "ESTO", expectedEur))
                 .thenReturn(Mono.just(new MovementDTO(
                         1L,
                         "ESFROM",
                         "TRANSFER",
-                        BigDecimal.TEN,
+                        expectedEur,
                         java.time.LocalDateTime.now()
                 )));
 
@@ -73,14 +77,36 @@ class OperationServiceTest {
                 .assertNext(result -> {
                     org.junit.jupiter.api.Assertions.assertEquals("ESFROM", result.sourceIban());
                     org.junit.jupiter.api.Assertions.assertEquals("ESTO", result.targetIban());
-                    org.junit.jupiter.api.Assertions.assertEquals(0, BigDecimal.TEN.compareTo(result.amount()));
+                    org.junit.jupiter.api.Assertions.assertEquals(0, new BigDecimal("9.00").compareTo(result.amount()));
                 })
                 .verifyComplete();
 
-        verify(exchangeRateClient).getRate("EUR", "EUR");
+        verify(exchangeRateClient).getRate("USD", "EUR");
         verify(accountServiceClient).getAccountByIban("ESFROM");
         verify(accountServiceClient).getAccountByIban("ESTO");
-        verify(accountServiceClient).transfer("ESFROM", "ESTO", BigDecimal.TEN);
+        verify(accountServiceClient).transfer("ESFROM", "ESTO", new BigDecimal("9.00"));
         verifyNoMoreInteractions(accountServiceClient, exchangeRateClient);
+    }
+
+    @Test
+    void transfer_whenExchangeRateUnavailable_shouldFailAndNotCallAccountTransfer() {
+        TransferRequest request = new TransferRequest(
+                "ESFROM",
+                "ESTO",
+                BigDecimal.TEN,
+                "USD"
+        );
+
+        when(exchangeRateClient.getRate("USD", "EUR"))
+                .thenReturn(Mono.error(new ExchangeRateClient.ExchangeRateUnavailableException("down")));
+
+        StepVerifier.create(operationService.transfer(request))
+                .expectError(OperationService.ExchangeRateRequiredException.class)
+                .verify();
+
+        // Importante: no debe tocar account-service si falla el rate (fallback seguro)
+        verify(exchangeRateClient).getRate("USD", "EUR");
+        verifyNoInteractions(accountServiceClient);
+        verifyNoMoreInteractions(exchangeRateClient);
     }
 }

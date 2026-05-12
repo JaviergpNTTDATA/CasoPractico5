@@ -66,12 +66,14 @@ public class OperationController {
     @PostMapping("/transfer")
     public Mono<TransferDTO> transfer(@RequestParam String sourceIban,
             @RequestParam String targetIban,
-            @RequestParam BigDecimal amount) {
+            @RequestParam BigDecimal amount,
+            @RequestParam(defaultValue = "EUR") String currency) {
 
         TransferRequest request = new TransferRequest(
                 sourceIban.toUpperCase(),
                 targetIban.toUpperCase(),
-                amount);
+                amount,
+                currency.toUpperCase());
 
         return service.transfer(request);
     }
