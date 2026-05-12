@@ -19,8 +19,8 @@ public class MovementEventService {
     }
 
     /**
-     * En este proyecto MovementDTO no expone accountId, solo IBAN.
-     * Para poder filtrar de forma consistente, el stream se publica por IBAN.
+     * In this service, we only make use of MovementDTO
+     * To be able to filter consistently, the stream is published by IBAN.
      */
     public Flux<MovementDTO> streamByIban(String iban) {
         String normalized = iban == null ? null : iban.toUpperCase();

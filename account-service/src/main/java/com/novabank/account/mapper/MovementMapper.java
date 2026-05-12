@@ -7,8 +7,8 @@ import com.novabank.account.model.Movement;
 public class MovementMapper {
 
     /**
-     * En R2DBC Movement ya no tiene referencia a Account (no hay @ManyToOne).
-     * Para incluir el IBAN en el DTO se necesita el Account (o el iban) aparte.
+     * In R2DBC, Movement no longer has a reference to Account (no @ManyToOne).
+     * To include the IBAN in the DTO, the Account (or the iban) is needed separately.
      */
     public static MovementDTO toDto(Movement movement, Account account) {
         if (movement == null) {

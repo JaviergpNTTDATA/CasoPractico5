@@ -6,12 +6,10 @@ import com.novabank.account.dto.ClientDTO;
 
 import reactor.core.publisher.Mono;
 
+
 /**
- * Fallback legacy de Feign. En esta migración ya no se usa porque la integración
- * con client-service se hace con WebClient + Resilience4j (ver ClientIntegrationService).
- *
- * Se mantiene como componente auxiliar por si se usa desde algún test o wiring antiguo,
- * pero devolviendo Mono para evitar APIs bloqueantes.
+ * Fallback legacy of feign. In this migration it is no longer used because the integration with client-service is done with WebClient + Resilience4j (see ClientIntegrationService).
+ * It is maintained as an auxiliary component in case it is used from some test or old wiring, but returning Mono to avoid blocking APIs.
  */
 @Component
 public class ClientServiceFallback {

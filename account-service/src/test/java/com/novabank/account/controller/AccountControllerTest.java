@@ -15,6 +15,7 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 import com.novabank.account.dto.AccountDTO;
 import com.novabank.account.service.AccountService;
 import com.novabank.account.service.InquiryService;
+import com.novabank.account.service.MovementEventService;
 
 import reactor.core.publisher.Flux;
 
@@ -29,6 +30,9 @@ class AccountControllerTest {
 
     @MockBean
     private InquiryService inquiryService;
+
+    @MockBean
+    private MovementEventService movementEventService;
 
     @Test
     void listByClient_shouldReturnAccounts() {

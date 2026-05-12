@@ -9,12 +9,11 @@ import org.springframework.web.reactive.function.client.WebClient;
 public class WebClientConfig {
 
     /**
-     * IMPORTANTE:
-     * Para que Spring Cloud LoadBalancer intercepte URLs tipo http://client-service/...
-     * la anotación @LoadBalanced debe aplicarse al WebClient.Builder, no al WebClient final.
-     *
-     * Si se anota el WebClient, el ExchangeFilterFunction de load-balancer no se instala
-     * y WebClient intenta resolver "client-service" vía DNS -> UnknownHostException.
+     * Important:
+     * For Spring Cloud LoadBalancer to intercept URLs like http://client-service/..., the @LoadBalanced annotation must be applied to the WebClient.Builder, not the final WebClient.
+     * If the WebClient is annotated, the load-balancer's ExchangeFilterFunction is not installed and WebClient tries to resolve "client-service" via DNS -> UnknownHostException.
+     * 
+     * In this configuration, the WebClient.Builder is annotated with @LoadBalanced, allowing URLs with serviceId (e.g., http://client-service) to be intercepted and resolved by LoadBalancer.
      */
     @Bean
     @LoadBalanced

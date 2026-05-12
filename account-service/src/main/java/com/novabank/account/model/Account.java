@@ -31,8 +31,8 @@ public class Account {
     private Long clientId;
 
     /**
-     * En R2DBC no existen relaciones ORM tipo @OneToMany.
-     * Los movimientos se consultan vía MovementRepository por account_id.
+     * In R2DBC, there are no ORM-style @OneToMany relationships.
+     * Movements are queried via MovementRepository by account_id.
      */
     @Column("balance")
     private BigDecimal balance;

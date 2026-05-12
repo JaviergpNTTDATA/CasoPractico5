@@ -20,9 +20,10 @@ public class ClienteServiceClient {
 
     public Mono<ClientDTO> obtenerCliente(Long id) {
         return webClient.get()
-                // Debe coincidir con el serviceId registrado en Eureka (normalmente en minúsculas).
-                // Con @LoadBalanced, WebClient resolverá "http://client-service" vía Spring Cloud LoadBalancer + Eureka.
-                // En client-service el endpoint es /clients/getById/{id} (ver ClientController)
+        
+                //It needs to match the serviceId registered in Eureka (usually lowercase).
+                //With @LoadBalanced, WebClient will resolve "http://client-service" via Spring
+                //Cloud LoadBalancer + Eureka.
                 .uri("http://client-service/clients/getById/{id}", id)
                 .retrieve()
                 .onStatus(HttpStatusCode::is4xxClientError,

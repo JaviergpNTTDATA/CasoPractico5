@@ -4,7 +4,7 @@
     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <!-- Hereda del pom padre novabank-microservices -->
+    <!--Heredate from the parent pom-->
     <parent>
         <groupId>com.novabank</groupId>
         <artifactId>novabank-microservices</artifactId>
@@ -24,7 +24,7 @@
             <artifactId>spring-boot-starter-webflux</artifactId>
         </dependency>
 
-        <!-- Persistencia reactiva con R2DBC -->
+        <!-- Persistence reactive with R2DBC -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-r2dbc</artifactId>

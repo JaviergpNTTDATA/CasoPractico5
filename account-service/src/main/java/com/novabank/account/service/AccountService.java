@@ -145,13 +145,13 @@ public class AccountService {
     }
 
     /**
-     * Transferencia completa (origen -> destino) en una única operación.
+     * Complete transfer operation with all necessary validations and movement recording.
      *
-     * Validaciones:
+     * Validations:
      * - amount > 0
      * - originIban != destinationIban
-     * - ambas cuentas existen
-     * - saldo suficiente en origen
+     * - both accounts exist
+     * - sufficient balance in origin account
      */
     public Mono<MovementDTO> transfer(String originIban, String destinationIban, BigDecimal amount) {
         validateAmount(amount);
