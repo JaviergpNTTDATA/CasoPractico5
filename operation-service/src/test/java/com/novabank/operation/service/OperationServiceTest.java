@@ -13,6 +13,7 @@ import com.novabank.operation.client.ExchangeRateClient;
 import com.novabank.operation.dto.AccountDTO;
 import com.novabank.operation.dto.MovementDTO;
 import com.novabank.operation.dto.TransferRequest;
+import com.novabank.operation.exception.ExchangeRateRequiredException;
 
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -101,7 +102,7 @@ class OperationServiceTest {
                 .thenReturn(Mono.error(new ExchangeRateClient.ExchangeRateUnavailableException("down")));
 
         StepVerifier.create(operationService.transfer(request))
-                .expectError(OperationService.ExchangeRateRequiredException.class)
+                .expectError(ExchangeRateRequiredException.class)
                 .verify();
 
         // Importante: no debe tocar account-service si falla el rate (fallback seguro)

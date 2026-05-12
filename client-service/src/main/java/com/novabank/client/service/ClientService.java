@@ -6,7 +6,6 @@ import com.novabank.client.dto.ClientDTO;
 import com.novabank.client.dto.CreateClient;
 import com.novabank.client.exception.ClientNotFoundException;
 import com.novabank.client.mapper.ClientMapper;
-import com.novabank.client.model.Client;
 import com.novabank.client.repository.ClientRepository;
 
 import reactor.core.publisher.Flux;
@@ -39,7 +38,7 @@ public class ClientService {
     }
 
     public Mono<ClientDTO> createClient(CreateClient dto) {
-        // Validaciones síncronas sobre el request (no bloqueantes)
+        //Validates, they are not blocking operations, so we can do them sequentially and short-circuit on the first error.
         if (dto.getFirstName() == null || dto.getFirstName().isBlank())
             throw new IllegalArgumentException("First name is needed");
         if (dto.getLastName() == null || dto.getLastName().isBlank())
@@ -51,7 +50,7 @@ public class ClientService {
         if (dto.getPhone() == null || dto.getPhone().isBlank())
             throw new IllegalArgumentException("Phone is needed");
 
-        // Patrón correcto: fijar el tipo de Mono.error para alinear ramas del switchIfEmpty
+        // Checks for duplicates. We could do them in parallel, but it's simpler to do them sequentially and short-circuit on the first error.
         return clientRepository.existsByDni(dto.getDni())
                 .flatMap(exists -> exists
                         ? Mono.<ClientDTO>error(

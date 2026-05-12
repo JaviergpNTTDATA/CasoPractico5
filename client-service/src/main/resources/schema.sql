@@ -1,5 +1,5 @@
--- Esquema para client-service (R2DBC ejecutará este script al arrancar si spring.sql.init.mode=always)
--- Ajusta nombres/columnas si tu BD actual difiere.
+-- Schema SQL for the table "clients" 
+-- Adjusted to match the ClientDTO fields and constraints
 
 CREATE TABLE IF NOT EXISTS clients (
   id BIGSERIAL PRIMARY KEY,

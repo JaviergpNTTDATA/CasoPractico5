@@ -8,8 +8,6 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import com.novabank.operation.service.OperationService;
-
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -41,8 +39,8 @@ public class GlobalExceptionHandler extends RuntimeException{
     }
 
     //Exchange-rate unavailable 503 (fallback seguro)
-    @ExceptionHandler(OperationService.ExchangeRateRequiredException.class)
-    public ResponseEntity<Map<String, Object>> handleExchangeRateUnavailable(OperationService.ExchangeRateRequiredException ex) {
+    @ExceptionHandler(ExchangeRateRequiredException.class)
+    public ResponseEntity<Map<String, Object>> handleExchangeRateUnavailable(ExchangeRateRequiredException ex) {
         return buildResponse("EXCHANGE_RATE_UNAVAILABLE", ex.getMessage(), HttpStatus.SERVICE_UNAVAILABLE);
     }
 
