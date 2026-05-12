@@ -1,6 +1,5 @@
 package com.novabank.operation.client;
 
-import com.novabank.operation.dto.AccountDTO;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -10,7 +9,6 @@ import org.springframework.test.context.ActiveProfiles;
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.junit.jupiter.api.Assertions.*;
 
-import org.junit.jupiter.api.Disabled;
 
 @SpringBootTest(properties = {
         // Forzamos el baseUrl del AccountServiceClient a WireMock

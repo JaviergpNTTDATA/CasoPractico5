@@ -9,9 +9,9 @@ import com.novabank.operation.client.ExchangeRateClient;
 import com.novabank.operation.dto.AccountDTO;
 import com.novabank.operation.dto.DepositWithdrawDTO;
 import com.novabank.operation.dto.DepositWithdrawRequest;
-import com.novabank.operation.dto.MovementDTO;
 import com.novabank.operation.dto.TransferDTO;
 import com.novabank.operation.dto.TransferRequest;
+import com.novabank.operation.exception.ExchangeRateRequiredException;
 import com.novabank.operation.exception.InsufficientBalanceException;
 
 import reactor.core.publisher.Mono;
@@ -92,16 +92,6 @@ public class OperationService {
                                     amountInEur));
                 }));
     }
-
-    /**
-     * Error específico para que el GlobalExceptionHandler lo traduzca a 503.
-     */
-    public static class ExchangeRateRequiredException extends RuntimeException {
-        public ExchangeRateRequiredException(String message, Throwable cause) {
-            super(message, cause);
-        }
-    }
-
     private void validateAmount(BigDecimal amount) {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Amount must be greater than zero");
