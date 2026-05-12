@@ -23,7 +23,7 @@ public class ExchangeRateClient {
 
     public Mono<ExchangeRateResponse> getRate(String from, String to) {
         return webClient.get()
-                .uri("http://EXCHANGE-RATE-MOCK-SERVICE/api/exchange-rate?from={from}&to={to}",
+                .uri("http://EXCHANGE-RATE-MOCK-SERVICE/exchange/rate?from={from}&to={to}",
                         from, to)
                 .retrieve()
                 .onStatus(HttpStatusCode::isError, resp -> resp.bodyToMono(String.class)
