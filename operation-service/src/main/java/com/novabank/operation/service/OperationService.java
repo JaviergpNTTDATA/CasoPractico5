@@ -61,29 +61,35 @@ public class OperationService {
             return Mono.error(new IllegalArgumentException("Source and target accounts must be different"));
         }
 
-        // Ejemplo: consultamos el tipo de cambio antes de ejecutar la transferencia.
-        // Fallback seguro: si el servicio de divisas falla, devolvemos error controlado (503)
-        // en vez de continuar silenciosamente con una tasa incorrecta.
-        Mono<ExchangeRateClient.ExchangeRateResponse> rateMono = exchangeRateClient
-                .getRate("EUR", "EUR")
-                .onErrorMap(ExchangeRateClient.ExchangeRateUnavailableException.class,
-                        ex -> new ExchangeRateRequiredException("Exchange rate unavailable", ex));
+        // Normalizamos moneda; por defecto EUR
+        String currency = (request.currency() == null || request.currency().isBlank())
+                ? "EUR"
+                : request.currency().toUpperCase();
 
-        return rateMono.then(Mono.zip(
+        // Consultamos el tipo de cambio ANTES de llamar a account-service.
+        // Fallback seguro: si exchange-rate falla, devolvemos 503 y NO tocamos saldos.
+        Mono<BigDecimal> amountInEurMono = ("EUR".equals(currency))
+                ? Mono.just(request.amount())
+                : exchangeRateClient.getRate(currency, "EUR")
+                        .map(rate -> request.amount().multiply(rate.rate()))
+                        .onErrorMap(ExchangeRateClient.ExchangeRateUnavailableException.class,
+                                ex -> new ExchangeRateRequiredException("Exchange rate unavailable", ex));
+
+        return amountInEurMono.flatMap(amountInEur -> Mono.zip(
                 accountServiceClient.getAccountByIban(request.sourceIban()),
                 accountServiceClient.getAccountByIban(request.targetIban()))
                 .flatMap(tuple -> {
                     AccountDTO source = tuple.getT1();
-                    ensureSufficientBalance(source.balance(), request.amount());
+                    ensureSufficientBalance(source.balance(), amountInEur);
 
                     return accountServiceClient.transfer(
                             request.sourceIban(),
                             request.targetIban(),
-                            request.amount())
+                            amountInEur)
                             .thenReturn(new TransferDTO(
                                     request.sourceIban(),
                                     request.targetIban(),
-                                    request.amount()));
+                                    amountInEur));
                 }));
     }
 

@@ -15,7 +15,7 @@ import com.novabank.exchange.dto.ExchangeRateResponse;
 import reactor.core.publisher.Mono;
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/exchange")
 public class ExchangeRateController {
 
     private static final Map<String, BigDecimal> RATES = Map.of(
@@ -24,7 +24,7 @@ public class ExchangeRateController {
             "GBP->EUR", new BigDecimal("1.17"),
             "EUR->GBP", new BigDecimal("0.85"));
 
-    @GetMapping("/exchange-rate")
+    @GetMapping("/rate")
     public Mono<ExchangeRateResponse> getRate(@RequestParam String from, @RequestParam String to) {
         String key = from.toUpperCase() + "->" + to.toUpperCase();
 
