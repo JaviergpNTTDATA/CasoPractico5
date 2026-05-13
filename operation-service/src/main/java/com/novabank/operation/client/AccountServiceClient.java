@@ -21,7 +21,7 @@ public class AccountServiceClient {
 
     public AccountServiceClient(@LoadBalanced WebClient.Builder builder,
                                 @Value("${account-service.base-url:http://ACCOUNT-SERVICE}") String baseUrl) {
-        // baseUrl por defecto = serviceId Eureka. En tests se puede overridear (WireMock).
+        //baseUrl default = serviceId Eureka. In tests it can be overridden (WireMock).
         this.webClient = builder.baseUrl(baseUrl).build();
     }
 

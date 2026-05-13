@@ -1,119 +1,182 @@
-# NOVABANK DIGITAL SERVICES – Sistema Bancario (Microservicios)
+# NovaBank Digital Services — Reactive Microservices Platform (CP5)
 
-> **NovaBank Digital Services** es un sistema bancario implementado como un **conjunto de microservicios** sobre el ecosistema **Spring Boot / Spring Cloud**.
-> Permite gestionar clientes, cuentas y operaciones financieras (depósitos, retiradas y transferencias) a través de una **API REST** protegida.
-> El proyecto incluye **API Gateway**, **Service Discovery (Eureka)** y **Config Server** para centralizar configuración.
+Sistema bancario distribuido implementado como **plataforma de microservicios** sobre **Spring Boot 3 + Spring Cloud**, evolucionado desde un stack clásico (MVC/JPA) a un stack **reactivo end‑to‑end (WebFlux + R2DBC)** para mejorar escalabilidad en operaciones I/O, permitir **streaming en tiempo real (SSE)** y modelar correctamente resiliencia/fail-fast en flujos transaccionales.
 
----
-
-## Funcionalidades
-
-### Autenticación / Seguridad
-- Protección de rutas a través del **API Gateway**
-- Validación/autorización mediante **token (JWT)**
-
-### Gestión de clientes (client-service)
-- Crear cliente
-- Buscar cliente
-- Listar clientes
-
-### Gestión de cuentas (account-service)
-- Crear cuenta asociada a un cliente
-- Listar cuentas de un cliente
-- Ver información de una cuenta
-- Consultar saldo
-
-### Operaciones (operation-service)
-- Depósitos
-- Retiros
-- Transferencias
-
-### Consultas
-- Ver movimientos de una cuenta
-- Filtrar movimientos por rango de fechas
+> **Dominio**: clientes, cuentas, movimientos, operaciones (depósitos, retiradas, transferencias) y autenticación con JWT, expuesto vía API Gateway.  
+> **Arquitectura**: Config Server + Eureka + Gateway + microservicios de negocio + servicios auxiliares (mock de tipo de cambio).
 
 ---
 
-## Arquitectura y módulos
+## 1. Módulos del repositorio (multi‑módulo Maven)
 
-El repositorio contiene varios módulos Maven (microservicios):
-
-- **config-server**: servidor de configuración centralizada (Spring Cloud Config Server)
-- **config-repo/**: repositorio de configuración (YAML) consumido por el config-server
-- **eureka-server**: registro y descubrimiento de servicios (Netflix Eureka)
-- **api-gateway**: puerta de entrada (Spring Cloud Gateway) + filtro de autenticación
-- **auth-server**: servicio de autenticación (emite/gestiona tokens)
-- **client-service**: microservicio de clientes
-- **account-service**: microservicio de cuentas y movimientos
-- **operation-service**: microservicio de operaciones (depósito/retirada/transferencia)
+- **config-server**: Spring Cloud Config Server (config centralizada)
+- **config-repo/**: repositorio de YAML consumido por Config Server
+- **eureka-server**: Service Discovery (Netflix Eureka)
+- **api-gateway**: Spring Cloud Gateway + filtro de autenticación JWT
+- **auth-server**: autenticación (login) y emisión de JWT (**WebFlux + R2DBC**)
+- **client-service**: gestión de clientes (**WebFlux + R2DBC**)
+- **account-service**: cuentas y movimientos (**WebFlux + R2DBC**) + **SSE** para stream de movimientos
+- **operation-service**: operaciones financieras (**WebFlux + R2DBC**) + integración con servicios externos + resiliencia reactiva
+- **exchange-rate-mock-service**: servicio mock de tipo de cambio (para pruebas y demos)
 
 ---
 
-## Autenticación para acceder a la API
+## 2. Visión de arquitectura (esquema)
 
-1. Desde Postman/Insomnia realiza un **POST** al endpoint de login del servicio de autenticación (ejemplo):
-   - `POST /auth/login`
+### 2.1 Topología general
 
-2. Body (JSON):
-```json
-{
-  "username": "string",
-  "password": "string"
-}
+```text
+                 +----------------------+
+                 |     Config Server    |
+                 |  (config-server)     |
+                 +----------+-----------+
+                            |
+                            v
++------------------+   +----+-------------------+
+|   Eureka Server  |<--+  Microservices (Eureka)|
+|  (eureka-server) |   |  client/account/oper.. |
++------------------+   +------------------------+
+
+Clients (Postman / Frontend / etc.)
+           |
+           v
++------------------+         +------------------+
+|   API Gateway    |-------->|    auth-server   |
+| (api-gateway)    |         |  (JWT login)     |
++--------+---------+         +------------------+
+         |
+         +------------------------------+
+         |                              |
+         v                              v
+ +---------------+              +---------------+
+ | client-service|              |account-service|
+ +---------------+              +-------+-------+
+                                         |
+                                         |  SSE: /accounts/{iban}/movements/stream
+                                         v
+                                   (stream events)
+
+operation-service --(HTTP/WebClient)--> account-service
+operation-service --(HTTP/WebClient)--> exchange-rate-mock-service
 ```
 
-3. Si las credenciales son correctas, recibirás un **token JWT**.  
-   Ese token se envía en las llamadas posteriores en la cabecera:
+### 2.2 Stack tecnológico (reactivo)
 
-```
-Authorization: Bearer <TOKEN>
-```
-
-> Nota: la ruta/puerto exactos dependen de tu configuración (Gateway y/o Auth Server).  
-> Revisa `api-gateway` y `auth-server` (`application.yml`) y la configuración centralizada en `config-repo/`.
+- Capa web: **Spring WebFlux** (`Mono`/`Flux`)
+- Persistencia: **Spring Data R2DBC** + **r2dbc-postgresql**
+- Cliente HTTP: **WebClient** (con load balancing cuando aplica)
+- Docs: **springdoc-openapi** para WebFlux
+- Tests: Reactor Test / WebTestClient / MockWebServer / @DataR2dbcTest
 
 ---
 
-## Documentación de la API (Swagger / OpenAPI)
+## 3. Principios de diseño aplicados
 
-Si está habilitada en cada microservicio, normalmente se puede acceder a:
+### 3.1 Reactivo end‑to‑end
+Se evita mezclar WebFlux con accesos bloqueantes (JPA/JDBC). La plataforma está pensada para:
+- mucha concurrencia,
+- latencias de red entre microservicios,
+- operaciones I/O dominantes.
 
-- `http://localhost:<PUERTO>/swagger-ui.html`  
-  o
-- `http://localhost:<PUERTO>/swagger-ui/index.html`
+### 3.2 Resiliencia y fallbacks según criticidad del dato
+NovaBank diferencia explícitamente entre:
+- **Datos transaccionales** (dinero/saldos/movimientos): ante fallo de un dato crítico (p.ej. tipo de cambio) se aplica **fail-fast** y se aborta la operación.
+- **Datos de visualización**: se permite degradación controlada (DTO parcial / “no disponible”) si no afecta integridad.
 
-Los puertos y rutas dependen de tu `application.yml` y de `config-repo/*.yml`.
+### 3.3 Streaming en tiempo real (SSE)
+El sistema publica movimientos en tiempo real para una cuenta mediante **Server‑Sent Events**.
 
----
-
-## Configuración (Config Server)
-
-- La configuración centralizada vive en: `config-repo/`
-  - `config-repo/application.yml`
-  - `config-repo/api-gateway.yml`
-  - `config-repo/client-service.yml`
-  - `config-repo/account-service.yml`
-  - `config-repo/operation-service.yml`
-
-- Cada servicio también puede tener valores por defecto en `src/main/resources/application.yml`.
-
----
-
-## Base de datos
-
-Cada microservicio gestiona su persistencia de forma independiente (según su configuración).
-
-- Revisa los `application.yml` (del servicio y/o `config-repo/`) para ver:
-  - URL de datasource
-  - usuario/contraseña
-  - driver
-  - estrategia DDL (si aplica)
+Implementación concreta:
+- **Endpoint SSE**:
+  - `account-service/src/main/java/com/novabank/account/controller/AccountController.java`
+  - `GET /accounts/{iban}/movements/stream` con `produces = MediaType.TEXT_EVENT_STREAM_VALUE`
+- **Bus de eventos**:
+  - `account-service/src/main/java/com/novabank/account/service/MovementEventService.java`
+  - `Sinks.Many<MovementDTO>` multicast con backpressure buffer y filtro por IBAN
 
 ---
 
-## Cómo compilar
+## 4. Seguridad / Autenticación
 
-Desde la raíz del proyecto:
+### 4.1 Flujo JWT
+1. El consumidor llama a `POST /auth/login` (vía gateway o directo al auth-server según despliegue).
+2. Si las credenciales son válidas, `auth-server` devuelve un **JWT**.
+3. Las llamadas al resto de endpoints se realizan con:
+   ```text
+   Authorization: Bearer <TOKEN>
+   ```
+
+### 4.2 Gateway como punto de control
+El **API Gateway** aplica el filtro de autenticación/validación de token antes de enrutar.
+
+> Nota: la ruta final dependerá de la configuración del gateway y de los puertos definidos en `config-repo/*.yml` / `application.yml`.
+
+---
+
+## 5. Documentación API (Swagger / OpenAPI)
+
+En servicios WebFlux, Swagger UI suele estar disponible en:
+
+- `http://localhost:<puerto>/swagger-ui.html`
+- `http://localhost:<puerto>/swagger-ui/index.html`
+
+---
+
+## 6. Base de datos y scripts de inicialización
+
+Cada microservicio gestiona su propia base de datos (PostgreSQL). En el stack reactivo:
+- La conexión se configura con `spring.r2dbc.*`
+- La inicialización de SQL se habilita con:
+  ```yaml
+  spring:
+    sql:
+      init:
+        mode: always
+  ```
+
+Cuando existe, `schema.sql` se ejecuta automáticamente sobre el **ConnectionFactory R2DBC**.
+
+---
+
+## 7. Resiliencia reactiva (Circuit Breaker + fallbacks)
+
+En WebFlux los fallos se gestionan dentro del flujo (no con `try/catch` imperativo). Se aplican:
+- Circuit breaker y timeouts en llamadas HTTP (WebClient)
+- Operadores como `onErrorResume`, `switchIfEmpty`, `timeout`, etc.
+
+Punto clave (caso de uso de transferencias):
+- **Si el tipo de cambio falla o no está disponible**, la operación **se aborta** (error controlado) y **no se continúa** con acciones transaccionales (no modificación de saldos).
+
+---
+
+## 8. Tests: tipos, herramientas y qué cubren
+
+### 8.1 Unit tests / service tests (Reactor)
+- **Herramienta**: `reactor-test` + **StepVerifier**
+- **Objetivo**: validar `Mono/Flux` (emisiones, completado, error) sin bloquear.
+
+### 8.2 Web layer tests (WebFlux)
+- **Herramienta**: **WebTestClient**
+- **Objetivo**: probar endpoints REST reactivos verificando status code y JSON.
+
+### 8.3 Persistencia (R2DBC)
+- **Herramienta**: **@DataR2dbcTest**
+- **Objetivo**: validar repositorios R2DBC y queries reactivos con contexto reducido.
+
+### 8.4 Integraciones HTTP simuladas
+- **Herramienta**: **MockWebServer**
+- **Objetivo**: simular dependencias (tipo de cambio, etc.) controlando respuestas y fallos.
+
+### 8.5 Test obligatorio: fallo controlado del tipo de cambio
+Se incluye explícitamente una prueba donde el servicio de tipo de cambio falla (p.ej. 500/timeout) y se valida:
+- que la operación devuelve un error controlado,
+- y que no se ejecutan efectos secundarios transaccionales posteriores.
+
+---
+
+## 9. Cómo compilar
+
+Desde la raíz:
 
 ```bash
 mvn clean compile
@@ -121,53 +184,69 @@ mvn clean compile
 
 ---
 
-## Cómo ejecutar (local)
+## 10. Cómo ejecutar en local (orden recomendado)
 
-En un entorno de microservicios, el orden típico es:
+> Arrancar cada servicio en una terminal distinta.
 
-1. **config-server**
-2. **eureka-server**
-3. **auth-server**
-4. **api-gateway**
-5. **client-service**, **account-service**, **operation-service**
-
-Ejemplo (en diferentes terminales):
-
+1) Config Server  
 ```bash
 mvn -pl config-server spring-boot:run
+```
+
+2) Eureka  
+```bash
 mvn -pl eureka-server spring-boot:run
+```
+
+3) Auth + Gateway + Servicios negocio  
+```bash
 mvn -pl auth-server spring-boot:run
 mvn -pl api-gateway spring-boot:run
 mvn -pl client-service spring-boot:run
 mvn -pl account-service spring-boot:run
 mvn -pl operation-service spring-boot:run
+mvn -pl exchange-rate-mock-service spring-boot:run
 ```
+
+> Nota importante (multi‑módulo): si ejecutas `spring-boot:run` desde la raíz con `-pl`, asegúrate de que la configuración de Maven no intente ejecutar el goal sobre el agregador. La forma más simple es ejecutar el comando desde el directorio del módulo (`cd auth-server && mvn spring-boot:run`), o mantener el `-pl` únicamente sobre el módulo.
 
 ---
 
-## Cómo ejecutar los tests
+## 11. Cómo ejecutar tests
 
+Todos:
 ```bash
 mvn test
 ```
 
----
-
-## Tecnologías usadas
-
-- Java 17
-- Spring Boot
-- Spring Data JPA
-- Spring Cloud (Config Server, Eureka, Gateway)
-- Spring Security + JWT
-- OpenAPI / Swagger (springdoc)
-- Lombok
-- Maven
-- JUnit 5 + Mockito
-- Git
+Por módulo:
+```bash
+mvn -pl operation-service test
+mvn -pl account-service test
+mvn -pl client-service test
+```
 
 ---
 
-## Repositorio
+## 12. Tecnologías
 
-https://github.com/JaviergpNTTDATA/CasoPractico4
+- **Java 17**
+- **Spring Boot 3.x**
+- **Spring Cloud**: Config Server, Eureka, Gateway
+- **Spring WebFlux**
+- **Spring Data R2DBC**
+- **PostgreSQL** + **r2dbc-postgresql**
+- **Spring Security** + JWT (jjwt)
+- **springdoc-openapi** (WebFlux)
+- **JUnit 5**
+- **Reactor Test (StepVerifier)**
+- **WebTestClient**
+- **MockWebServer**
+- **Lombok**
+- **Maven**
+
+---
+
+## 13. Repositorio
+
+https://github.com/JaviergpNTTDATA/CasoPractico5

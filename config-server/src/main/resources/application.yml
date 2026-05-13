@@ -8,13 +8,13 @@ spring:
     config:
       server:
         git:
-          uri: file:///C:/Users/jgarcpor/ProyectosSpringBoot/CP5/config-repo
+          uri: ${CONFIG_REPO_URI:file:///C:/Users/jgarcpor/ProyectosSpringBoot/CP5/config-repo}
           default-label: main
 
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: ${EUREKA_DEFAULT_ZONE}
 
 management:
   endpoints:

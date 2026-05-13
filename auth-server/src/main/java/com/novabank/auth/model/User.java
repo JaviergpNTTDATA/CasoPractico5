@@ -1,26 +1,28 @@
 package com.novabank.auth.model;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.Table;
+
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-@Entity
-@Table(name = "users")
+@Table("users")
 @Getter
 @Setter
 @NoArgsConstructor
 public class User {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true, nullable = false)
+    @Column("username")
     private String username;
 
-    @Column(nullable = false)
-    private String password; 
+    @Column("password")
+    private String password;
 
-    private String role; 
+    @Column("role")
+    private String role;
 }
