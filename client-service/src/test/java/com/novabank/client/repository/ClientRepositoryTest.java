@@ -1,17 +1,18 @@
 package com.novabank.client.repository;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.autoconfigure.data.r2dbc.DataR2dbcTest;
+import org.springframework.test.context.ActiveProfiles;
 
 import com.novabank.client.model.Client;
 
-@DataJpaTest
+import reactor.test.StepVerifier;
+
+@DataR2dbcTest
+@ActiveProfiles("test")
 class ClientRepositoryTest {
 
     @Autowired
@@ -19,17 +20,19 @@ class ClientRepositoryTest {
 
     @Test
     void saveAndFindByDni_shouldWork() {
+        // DNI unique for this test run, to avoid conflicts with other tests or existing data.
+        String dni = "TEST-" + java.util.UUID.randomUUID();
+
         Client client = new Client();
         client.setFirstName("Ana");
         client.setLastName("López");
-        client.setDni("87654321B");
-        client.setEmail("ana@example.com");
-        client.setPhone("600111111");
+        client.setDni(dni);
+        client.setEmail("ana+" + dni + "@example.com");
+        client.setPhone("600" + dni.substring(dni.length() - 6));
 
-        clientRepository.save(client);
-
-        Optional<Client> found = clientRepository.findByDni("87654321B");
-        assertTrue(found.isPresent());
-        assertEquals("Ana", found.get().getFirstName());
+        StepVerifier.create(clientRepository.save(client)
+                .then(clientRepository.findByDni(dni)))
+                .assertNext(found -> assertEquals("Ana", found.getFirstName()))
+                .verifyComplete();
     }
 }

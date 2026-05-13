@@ -1,68 +1,72 @@
 package com.novabank.account.model;
 
-import jakarta.persistence.*;
-import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.Table;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Builder
-@Entity
-@Getter @Setter
+@Table("accounts")
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "accounts")
 public class Account {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "iban", unique = true, nullable = false)
+    @Column("iban")
     private String iban;
 
-    @Column(name = "client_id", nullable = false)
+    @Column("client_id")
     private Long clientId;
 
-    @OneToMany(mappedBy = "account", cascade = CascadeType.ALL)
-    private List<Movement> movements = new ArrayList<>();
+    /**
+     * In R2DBC, there are no ORM-style @OneToMany relationships.
+     * Movements are queried via MovementRepository by account_id.
+     */
+    @Column("balance")
+    private BigDecimal balance;
 
-    @Column(nullable = false)
-    private BigDecimal balance = BigDecimal.ZERO;
-
-    @CreationTimestamp
-    @Column(name = "createdAt", updatable = false)
+    @Column("created_at")
     private LocalDateTime createdAt;
 
     public Account(Long clientId) {
         this.clientId = clientId;
+        this.balance = BigDecimal.ZERO;
+        this.createdAt = LocalDateTime.now();
     }
 
-    @PrePersist
-    public void prePersist() {
+    public void ensureDefaults() {
         if (balance == null) balance = BigDecimal.ZERO;
         if (createdAt == null) createdAt = LocalDateTime.now();
     }
 
-    public void deposit(BigDecimal balance) {
-        if (balance == null || balance.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Invalid balance");
+    public void deposit(BigDecimal amount) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Invalid amount");
         }
-        this.balance = this.balance.add(balance);
+        ensureDefaults();
+        this.balance = this.balance.add(amount);
     }
 
-    public void withdraw(BigDecimal balance) {
-        if (balance == null || balance.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Invalid balance");
+    public void withdraw(BigDecimal amount) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Invalid amount");
         }
-        if (this.balance.compareTo(balance) < 0) {
+        ensureDefaults();
+        if (this.balance.compareTo(amount) < 0) {
             throw new IllegalArgumentException("Insufficient balance");
         }
-        this.balance = this.balance.subtract(balance);
+        this.balance = this.balance.subtract(amount);
     }
-
 }

@@ -1,21 +1,27 @@
 package com.novabank.account.repository;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
+import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Component;
+
+import reactor.core.publisher.Mono;
 
 @Component
 public class IbanGenerator {
 
-    @PersistenceContext
-    private EntityManager entityManager;
+    private final DatabaseClient databaseClient;
 
-    public String generateIban() {
-        Long secuencia = ((Number) entityManager
-                .createNativeQuery("SELECT nextval('iban_seq')")
-                .getSingleResult())
-                .longValue();
+    public IbanGenerator(DatabaseClient databaseClient) {
+        this.databaseClient = databaseClient;
+    }
 
-        return "ES91210000" + String.format("%012d", secuencia);
+    /**
+     * Generates an IBAN using a PostgreSQL sequence (iban_seq).
+     * Requires the sequence to exist: CREATE SEQUENCE iban_seq;
+     */
+    public Mono<String> generateIban() {
+        return databaseClient.sql("SELECT nextval('iban_seq') AS seq")
+                .map(row -> row.get("seq", Long.class))
+                .one()
+                .map(seq -> "ES91210000" + String.format("%012d", seq));
     }
 }

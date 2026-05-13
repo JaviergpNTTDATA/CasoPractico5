@@ -1,19 +1,20 @@
 package com.novabank.account.repository;
 
-import org.springframework.data.jpa.repository.JpaRepository;
+import java.time.LocalDateTime;
+
+import org.springframework.data.repository.reactive.ReactiveCrudRepository;
 import org.springframework.stereotype.Repository;
 
 import com.novabank.account.model.Movement;
 
-import java.time.LocalDateTime;
-import java.util.List;
+import reactor.core.publisher.Flux;
 
 @Repository
-public interface MovementRepository extends JpaRepository<Movement, Long> {
+public interface MovementRepository extends ReactiveCrudRepository<Movement, Long> {
 
-    List<Movement> findByAccount_ibanOrderByCreatedAtDesc(String iban);
+    Flux<Movement> findByAccountIdOrderByCreatedAtDesc(Long accountId);
 
-    List<Movement> findByAccount_ibanAndCreatedAtBetweenOrderByCreatedAtDesc(String iban, LocalDateTime start, LocalDateTime end
-    );
+    Flux<Movement> findByAccountIdAndCreatedAtBetweenOrderByCreatedAtDesc(Long accountId, LocalDateTime start,
+            LocalDateTime end);
 
 }

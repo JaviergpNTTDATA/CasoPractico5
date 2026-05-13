@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: exchange-rate-mock-service
+  config:
+    # Necesario en Spring Boot 3 + Spring Cloud Config para cargar config del Config Server
+    import: "optional:configserver:"
+
+server:
+  port: 8090
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_DEFAULT_ZONE}

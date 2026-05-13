@@ -1,23 +1,31 @@
 package com.novabank.account.controller;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.novabank.account.dto.AccountBalanceDTO;
 import com.novabank.account.dto.AccountDTO;
 import com.novabank.account.dto.MovementDTO;
 import com.novabank.account.service.AccountService;
 import com.novabank.account.service.InquiryService;
+import com.novabank.account.service.MovementEventService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-
-import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.web.bind.annotation.*;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.List;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 @Tag(name = "Accounts", description = "Operations related to accounts")
 @RestController
@@ -27,12 +35,13 @@ public class AccountController {
 
     private final AccountService service;
     private final InquiryService inquiryService;
+    private final MovementEventService movementEventService;
 
     @Operation(summary = "Create account", description = "Creates a new account for a given client")
     @ApiResponse(responseCode = "200", description = "Account created successfully")
     @ApiResponse(responseCode = "404", description = "Client not found")
     @PostMapping("/create/{clientId}")
-    public AccountDTO create(@PathVariable Long clientId) {
+    public Mono<AccountDTO> create(@PathVariable Long clientId) {
         return service.createAccount(clientId);
     }
 
@@ -40,7 +49,7 @@ public class AccountController {
     @ApiResponse(responseCode = "200", description = "Accounts found")
     @ApiResponse(responseCode = "404", description = "Client not found")
     @GetMapping("/client/{clientId}")
-    public List<AccountDTO> listByClient(@PathVariable Long clientId) {
+    public Flux<AccountDTO> listByClient(@PathVariable Long clientId) {
         return service.listClientAccounts(clientId);
     }
 
@@ -48,40 +57,38 @@ public class AccountController {
     @ApiResponse(responseCode = "200", description = "Account found")
     @ApiResponse(responseCode = "404", description = "Account not found")
     @GetMapping("/iban/{iban}")
-    public AccountDTO getByIban(@PathVariable String iban) {
+    public Mono<AccountDTO> getByIban(@PathVariable String iban) {
         return service.getAccountByIban(iban.toUpperCase());
     }
 
     @PostMapping("/{iban}/deposit")
-    public MovementDTO deposit(@PathVariable String iban,
-            @RequestParam BigDecimal amount) {
+    public Mono<MovementDTO> deposit(@PathVariable String iban, @RequestParam BigDecimal amount) {
         return service.deposit(iban.toUpperCase(), amount);
     }
 
     @PostMapping("/{iban}/withdraw")
-    public MovementDTO withdraw(@PathVariable String iban,
-            @RequestParam BigDecimal amount) {
+    public Mono<MovementDTO> withdraw(@PathVariable String iban, @RequestParam BigDecimal amount) {
         return service.withdraw(iban.toUpperCase(), amount);
     }
 
-    @PostMapping("/{iban}/transfer-withdraw")
-    public MovementDTO transferWithdraw(@PathVariable String iban,
+    @Operation(summary = "Transfer money between accounts", description = "Transfers an amount from origin IBAN to destination IBAN")
+    @ApiResponse(responseCode = "200", description = "Transfer completed successfully")
+    @ApiResponse(responseCode = "400", description = "Invalid request")
+    @ApiResponse(responseCode = "404", description = "Origin or destination account not found")
+    @ApiResponse(responseCode = "422", description = "Insufficient balance")
+    @PostMapping("/transfer")
+    public Mono<MovementDTO> transfer(
+            @RequestParam String originIban,
+            @RequestParam String destinationIban,
             @RequestParam BigDecimal amount) {
-        return service.transferWithdraw(iban.toUpperCase(), amount);
-    }
-
-    @PostMapping("/{iban}/transfer-deposit")
-    public MovementDTO transferDeposit(@PathVariable String iban,
-            @RequestParam BigDecimal amount) {
-        return service.transferDeposit(iban.toUpperCase(), amount);
+        return service.transfer(originIban.toUpperCase(), destinationIban.toUpperCase(), amount);
     }
 
     @Operation(summary = "Get movements of an account", description = "Returns all movements of an account ordered by date (desc)")
     @ApiResponse(responseCode = "200", description = "Movements found")
     @ApiResponse(responseCode = "404", description = "Account or movements not found")
     @GetMapping("/{iban}/movements")
-    public List<MovementDTO> getMovementsByAccount(
-            @PathVariable String iban) {
+    public Flux<MovementDTO> getMovementsByAccount(@PathVariable String iban) {
         return inquiryService.getByAccount(iban.toUpperCase());
     }
 
@@ -89,7 +96,7 @@ public class AccountController {
     @ApiResponse(responseCode = "200", description = "Movements found")
     @ApiResponse(responseCode = "404", description = "Account or movements not found")
     @GetMapping("/{iban}/movements/by-date")
-    public List<MovementDTO> getMovementsByAccountAndDates(
+    public Flux<MovementDTO> getMovementsByAccountAndDates(
             @PathVariable String iban,
             @Parameter(description = "Start date (yyyy-MM-dd)") @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
             @Parameter(description = "End date (yyyy-MM-dd)") @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end) {
@@ -100,8 +107,13 @@ public class AccountController {
     @ApiResponse(responseCode = "200", description = "Balance retrieved successfully")
     @ApiResponse(responseCode = "404", description = "Account not found")
     @GetMapping("/iban/{iban}/balance")
-    public AccountBalanceDTO getBalanceByIban(@PathVariable String iban) {
+    public Mono<AccountBalanceDTO> getBalanceByIban(@PathVariable String iban) {
         return service.getBalanceByIban(iban.toUpperCase());
+    }
+
+    @GetMapping(value = "/{iban}/movements/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<MovementDTO> streamMovements(@PathVariable String iban) {
+        return movementEventService.streamByIban(iban.toUpperCase());
     }
 
 }

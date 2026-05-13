@@ -38,6 +38,12 @@ public class GlobalExceptionHandler extends RuntimeException{
         return buildResponse("INSUFFICIENT_BALANCE", ex.getMessage(), HttpStatus.UNPROCESSABLE_ENTITY);
     }
 
+    //Exchange-rate unavailable 503 (fallback seguro)
+    @ExceptionHandler(ExchangeRateRequiredException.class)
+    public ResponseEntity<Map<String, Object>> handleExchangeRateUnavailable(ExchangeRateRequiredException ex) {
+        return buildResponse("EXCHANGE_RATE_UNAVAILABLE", ex.getMessage(), HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
     //Invdalid or duplicated error 400
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {

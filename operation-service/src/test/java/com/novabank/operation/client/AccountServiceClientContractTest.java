@@ -1,6 +1,5 @@
 package com.novabank.operation.client;
 
-import com.novabank.operation.dto.AccountDTO;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -12,12 +11,16 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import org.junit.jupiter.api.Disabled;
 
+
 @SpringBootTest(properties = {
-        "feign.client.config.ACCOUNT-SERVICE.url=http://localhost:${wiremock.server.port}"
+
+        // This forces the AccountServiceClient to use the WireMock server instead of the real account-service.
+        //
+        "account-service.base-url=http://localhost:${wiremock.server.port}"
 })
 @AutoConfigureWireMock(port = 0)
+@Disabled("Just beacuse me need to give the access, no it will drop us an 503 error")
 @ActiveProfiles("test")
-@Disabled
 class AccountServiceClientContractTest {
 
     @Autowired
@@ -36,10 +39,12 @@ class AccountServiceClientContractTest {
                             }
                             """)));
 
-        AccountDTO account = accountServiceClient.getAccountByIban("ES123");
-
-        assertNotNull(account);
-        assertEquals("ES123", account.iban());
-        assertEquals(1L, account.id());
+        reactor.test.StepVerifier.create(accountServiceClient.getAccountByIban("ES123"))
+                .assertNext(account -> {
+                    assertNotNull(account);
+                    assertEquals("ES123", account.iban());
+                    assertEquals(1L, account.id());
+                })
+                .verifyComplete();
     }
 }

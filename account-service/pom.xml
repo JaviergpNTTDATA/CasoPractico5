@@ -4,7 +4,7 @@
     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <!-- Hereda del pom padre novabank-microservices -->
+    <!--Heredate from the parent pom-->
     <parent>
         <groupId>com.novabank</groupId>
         <artifactId>novabank-microservices</artifactId>
@@ -18,34 +18,35 @@
     <packaging>jar</packaging>
 
     <dependencies>
-        <!-- Web MVC bloqueante -->
+        <!-- WebFlux (stack reactivo) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
         </dependency>
 
-        <!-- Spring Data JPA -->
+        <!-- Persistence reactive with R2DBC -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
-            <scope>test</scope>
+            <artifactId>spring-boot-starter-data-r2dbc</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-contract-wiremock</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <!-- Driver PostgreSQL -->
+        <!-- Driver R2DBC PostgreSQL -->
         <dependency>
             <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-            <scope>runtime</scope>
+            <artifactId>r2dbc-postgresql</artifactId>
+        </dependency>
+
+        <!-- Swagger/OpenAPI para WebFlux -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webflux-ui</artifactId>
+            <version>${springdoc.version}</version>
+        </dependency>
+
+        <!-- Balanceador necesario para WebClient con @LoadBalanced (antes venía transitivo por Feign) -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-loadbalancer</artifactId>
         </dependency>
 
         <!-- Cliente Eureka -->
@@ -60,10 +61,10 @@
             <artifactId>spring-cloud-starter-config</artifactId>
         </dependency>
 
-        <!-- OpenFeign para llamar a client-service más adelante -->
+        <!-- Circuit breaker -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-openfeign</artifactId>
+            <artifactId>spring-cloud-starter-circuitbreaker-resilience4j</artifactId>
         </dependency>
 
         <!-- (Opcional) Lombok si lo usas -->
@@ -72,12 +73,6 @@
             <artifactId>lombok</artifactId>
             <optional>true</optional>
         </dependency>
-        <!-- Swagger / OpenAPI -->
-        <dependency>
-            <groupId>org.springdoc</groupId>
-            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-        </dependency>
-
 
         <!-- Tests -->
         <dependency>
@@ -85,9 +80,26 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <!-- Testing reactivo -->
+        <dependency>
+            <groupId>io.projectreactor</groupId>
+            <artifactId>reactor-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Wiremock (si lo sigues usando para tests contract) -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-circuitbreaker-resilience4j</artifactId>
+            <artifactId>spring-cloud-contract-wiremock</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- H2 (OJO: es JDBC; si quieres tests R2DBC con H2 habría que usar r2dbc-h2) -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
         </dependency>
 
     </dependencies>

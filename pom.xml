@@ -17,20 +17,23 @@
     <version>1.0.0</version>
     <packaging>pom</packaging>
 
-    <properties>
+  <properties>
+    <!-- springdoc no está gestionado por el BOM de Spring Boot -->
+    <springdoc.version>2.6.0</springdoc.version>
         <java.version>17</java.version>
         <spring-boot.version>3.2.5</spring-boot.version>
         <spring-cloud.version>2023.0.1</spring-cloud.version>
     </properties>
 
     <modules>
-        <module>eureka-server</module>
         <module>config-server</module>
+        <module>eureka-server</module>
         <module>api-gateway</module>
         <module>auth-server</module>
         <module>client-service</module>
         <module>account-service</module>
         <module>operation-service</module>
+        <module>exchange-rate-mock-service</module>
     </modules>
 
     <dependencyManagement>
@@ -57,7 +60,12 @@
             <dependency>
                 <groupId>org.springdoc</groupId>
                 <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-                <version>2.5.0</version>
+                <version>${springdoc.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-starter-webflux-ui</artifactId>
+                <version>${springdoc.version}</version>
             </dependency>
             <dependency>
                 <groupId>jakarta.validation</groupId>
