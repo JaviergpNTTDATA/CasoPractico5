@@ -1,10 +1,16 @@
 package com.novabank.auth.controller;
 
-import com.novabank.auth.service.AuthService;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
 import java.util.Map;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.novabank.auth.service.AuthService;
+
+import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("/auth")
@@ -22,8 +28,8 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<Map<String, String>> login(@RequestBody LoginRequest request) {
-        String token = authService.authenticate(request.username, request.password);
-        return ResponseEntity.ok(Map.of("token", token));
+    public Mono<ResponseEntity<Map<String, String>>> login(@RequestBody LoginRequest request) {
+        return authService.authenticate(request.username, request.password)
+                .map(token -> ResponseEntity.ok(Map.of("token", token)));
     }
 }

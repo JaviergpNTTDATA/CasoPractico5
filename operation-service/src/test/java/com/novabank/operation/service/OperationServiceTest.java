@@ -10,6 +10,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.novabank.operation.client.AccountServiceClient;
 import com.novabank.operation.client.ExchangeRateClient;
+import com.novabank.operation.client.ExchangeRateResponse;
+import com.novabank.operation.client.ExchangeRateUnavailableException;
 import com.novabank.operation.dto.AccountDTO;
 import com.novabank.operation.dto.MovementDTO;
 import com.novabank.operation.dto.TransferRequest;
@@ -55,7 +57,7 @@ class OperationServiceTest {
 
         // La implementación actual consulta divisa antes de transferir.
         when(exchangeRateClient.getRate("USD", "EUR")).thenReturn(Mono.just(
-                new ExchangeRateClient.ExchangeRateResponse("USD", "EUR", new BigDecimal("0.90"), java.time.Instant.now())
+                new ExchangeRateResponse("USD", "EUR", new BigDecimal("0.90"), java.time.Instant.now())
         ));
 
         when(accountServiceClient.getAccountByIban("ESFROM")).thenReturn(Mono.just(source));
@@ -99,7 +101,7 @@ class OperationServiceTest {
         );
 
         when(exchangeRateClient.getRate("USD", "EUR"))
-                .thenReturn(Mono.error(new ExchangeRateClient.ExchangeRateUnavailableException("down")));
+                .thenReturn(Mono.error(new ExchangeRateUnavailableException("down")));
 
         StepVerifier.create(operationService.transfer(request))
                 .expectError(ExchangeRateRequiredException.class)

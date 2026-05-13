@@ -61,7 +61,7 @@ public class OperationService {
             return Mono.error(new IllegalArgumentException("Source and target accounts must be different"));
         }
 
-        // Normalizamos moneda; por defecto EUR
+        //Normalize currency; default to EUR
         String currency = (request.currency() == null || request.currency().isBlank())
                 ? "EUR"
                 : request.currency().toUpperCase();
@@ -71,7 +71,7 @@ public class OperationService {
                 ? Mono.just(request.amount())
                 : exchangeRateClient.getRate(currency, "EUR")
                         .map(rate -> request.amount().multiply(rate.rate()))
-                        .onErrorMap(ExchangeRateClient.ExchangeRateUnavailableException.class,
+                        .onErrorMap(com.novabank.operation.client.ExchangeRateUnavailableException.class,
                                 ex -> new ExchangeRateRequiredException("Exchange rate unavailable", ex));
 
         return amountInEurMono.flatMap(amountInEur -> Mono.zip(

@@ -2,13 +2,13 @@ spring:
   application:
     name: client-service
   config:
-    import: optional:configserver:http://localhost:8888
+    import: optional:configserver:${CONFIG_SERVER_URL}
   # Fallback if config server is down, to avoid "Failed to determine a suitable RDBC Connection URL" and similar errors.
   # This avoids the "Failed to determine a suitable RDBC Connection URL" error when config server is down, but it won't work if the config server is up and doesn't provide these properties.
   r2dbc:
-    url: r2dbc:postgresql://localhost:5432/novabank_clients
-    username: banco_user
-    password: 1234
+    url: ${CLIENT_R2DBC_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
   sql:
     init:
       mode: always
@@ -16,4 +16,4 @@ spring:
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: ${EUREKA_DEFAULT_ZONE}

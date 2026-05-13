@@ -1,8 +1,6 @@
 package com.novabank.operation.client;
 
-import java.math.BigDecimal;
 import java.time.Duration;
-import java.time.Instant;
 
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
@@ -33,18 +31,5 @@ public class ExchangeRateClient {
                 .timeout(Duration.ofSeconds(2))
                 .onErrorMap(WebClientRequestException.class,
                         ex -> new ExchangeRateUnavailableException("Exchange rate service unreachable", ex));
-    }
-
-    public record ExchangeRateResponse(String from, String to, BigDecimal rate, Instant timestamp) {
-    }
-
-    public static class ExchangeRateUnavailableException extends RuntimeException {
-        public ExchangeRateUnavailableException(String message) {
-            super(message);
-        }
-
-        public ExchangeRateUnavailableException(String message, Throwable cause) {
-            super(message, cause);
-        }
     }
 }
